@@ -35,7 +35,6 @@ const SELL_TOKEN_ADDRESS = process.env.SELL_TOKEN || NATIVE_MINT.toBase58(); // 
 const BUY_TOKEN_ADDRESS = process.env.BUY_TOKEN || "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"; // EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v USDC MINT ADDRESS
 
 const SELL_PRICE = parseFloat(process.env.SELL_PRICE) || 220;
-const SELL_POOLED_SOL = parseFloat(process.env.SELL_POOLED_SOL) || 200;
 const SELL_AMOUNT = parseFloat(process.env.SELL_AMOUNT) || 0.1;
 
 function sleep(ms) {
@@ -445,7 +444,21 @@ const getTokenUiBalance = async (owner, mint) => {
 
 }
 
-const main = async () => {
+let solPrice = 0;
+const getSolPrice = async () => {
+    try {
+        const { solana } = await fetchAPI(
+            'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd',
+            'GET',
+        );
+        return solana?.usd || 0;
+    } catch (error) {
+        // console.log(`Failed to get Sol price`, error)
+    }
+    return 0
+}
+
+const sell = async () => {
     try {
 
         const solBalance = await connection.getBalance(PAYER_ADDRESS);
@@ -481,9 +494,20 @@ const main = async () => {
         });
         await connection.confirmTransaction(txid);
 
+        // End Script
+        process.exit(1)
+
     } catch (e) {
         console.log(e)
     }
+}
+const main = async () => {
+    solPrice = await getSolPrice();
+    setInterval(() => {
+        if (solPrice >= SELL_PRICE) {
+            sell()
+        }
+    }, 10 * 1000)
 }
 
 main()
